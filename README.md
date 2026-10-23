@@ -1,127 +1,224 @@
-# LangGraph email agent: local Llama edition (no paid LLM API)
+# LangGraph AI Email Agent with Llama 3.2
 
-**What it does:** asks who to email and what to say; drafts a complete email with a local Llama model; shows the exact recipient, subject and body; lets you request repeated revisions; and sends through Gmail **only if you explicitly approve** in live mode.
+An AI-powered email assistant built using **Python, LangGraph, Llama 3.2, and Ollama**. The agent automatically generates emails based on user requirements, allows revisions, and sends emails through Gmail after receiving explicit user approval.
 
-## What changed from the original OpenAI version
+## Features
 
-- Replaced `langchain-openai` / `ChatOpenAI` with `langchain-ollama` / `ChatOllama`.
-- Uses Meta's Llama 3.2 locally via **Ollama**. No OpenAI API key or model API subscription.
-- Keeps existing LangGraph state/checkpoints, revision loop, approval fingerprints, Gmail OAuth and duplicate-send protections.
-- `--mock` **still** tests only the LangGraph flow and **does not generate real emails**. To use the actual Llama model, run `python main.py` **without `--mock`**.
+- **AI Email Generation:** Generates complete emails based on user instructions.
+- **Email Revisions:** Allows users to request modifications until satisfied.
+- **Human-in-the-Loop:** Requires user approval before sending any email.
+- **Gmail Integration:** Sends approved emails using Gmail API.
+- **Local LLM:** Uses Llama 3.2 through Ollama for email generation.
+- **Workflow Management:** Uses LangGraph to manage execution, decisions, and state.
+- **Checkpointing:** Saves conversation and workflow progress using SQLite.
+- **Secure Sending:** Includes email validation and duplicate-send protection.
+- **Dry-Run Mode:** Allows testing without sending real emails.
 
-## Setup on a Mac (first run)
+## Technologies Used
 
-1. Install the Ollama app from <https://ollama.com/download/mac> and launch it. The `ollama` command should become available in Terminal. If the server is not running, open the Ollama app (or use `ollama serve` in another Terminal).
-2. Download the local model:
+| Technology | Purpose |
+|---|---|
+| Python | Application development |
+| LangGraph | Agent workflow and state management |
+| LangChain | LLM integration |
+| Llama 3.2 | Email generation and revisions |
+| Ollama | Running the language model locally |
+| Gmail API | Sending emails |
+| Google OAuth 2.0 | Gmail authentication |
+| SQLite | Workflow checkpoints and sending records |
 
-   ```bash
-   ollama pull llama3.2
-   ```
+## Installation and Setup
 
-   This is the 3B text model (download about 2GB). Download requires internet, but local generation works offline afterward.
+### 1. Install Ollama
 
-3. Optional: make sure Llama can actually generate text:
+Download and install Ollama:
 
-   ```bash
-   ollama run llama3.2
-   ```
+https://ollama.com/download
 
-   Type `Write a short friendly email to a friend.` and then `/bye` to exit.
+Start Ollama and download Llama 3.2 using Terminal:
 
-4. In a Terminal **inside the extracted project folder**:
+`ollama pull llama3.2`
 
-   ```bash
-   python3 -m venv .venv
-   source .venv/bin/activate
-   python -m pip install -r requirements.txt
-   cp .env.example .env
-   ```
+Test the model:
 
-   `.env` is optional. Its defaults are `OLLAMA_MODEL=llama3.2` and `OLLAMA_BASE_URL=http://localhost:11434`. No API key is used.
+`ollama run llama3.2`
 
-5. Start AI email drafting, while keeping email sending **disabled**:
+### 2. Set Up the Python Environment
 
-   ```bash
-   python main.py
-   ```
+Clone the GitHub repository:
 
-6. Enter the recipient's email and tell Llama what to write. It generates a new subject/body rather than copying the instructions. Review the draft and enter `edit` with new instructions as often as needed; choose `cancel` or `send`. In **default dry-run mode**, `send` means *approve only*: no real email is sent.
+`git clone https://github.com/moadil65/langgraph-email-agent.git`
 
-### Important: `--mock` is not Llama
+Navigate to the project folder:
 
-Do not use `python main.py --mock` if you want the model to draft real emails. Mock mode merely copies the requirements into a template and appends revision instructions. It exists only for offline workflow testing.
+`cd langgraph-email-agent`
 
-### Choose a larger Llama if needed
+Create a virtual environment:
 
-The 3B model is a lightweight starting point. If your Mac has sufficient unified memory, try the more capable (but slower/larger) 8B model:
+`python3 -m venv .venv`
 
-```bash
-ollama pull llama3.1:8b
-```
+Activate it:
 
-Update your `.env` to `OLLAMA_MODEL=llama3.1:8b` and start `python main.py` again. Download size is around 4.7GB; peak memory use is higher. Model quality varies, and all AI-generated email content must be reviewed.
+`source .venv/bin/activate`
 
-## Enable real Gmail sending (optional)
+Install dependencies:
 
-**Keep `python main.py` for learning and safe drafts.** Gmail sending needs a *separate Google OAuth setup*; ChatGPT's Gmail connection cannot automatically be reused by this standalone app.
+`pip install -r requirements.txt`
 
-Google guide: <https://developers.google.com/workspace/gmail/api/quickstart/python>
+### 3. Configure the Environment
 
-1. Use Google Cloud Console to create/select a project and enable Gmail API.
-2. Configure OAuth consent and add your own account as a test user if required.
-3. Create an OAuth client with application type **Desktop**.
-4. Download its JSON file and place it alongside `main.py` as `credentials.json`.
-5. Only when ready to really send emails, start a **new** thread with:
+Create a `.env` file:
 
-   ```bash
-   python main.py --live
-   ```
+`cp .env.example .env`
 
-6. On first live approval, Google's OAuth page opens. The app requests only Gmail's `gmail.send` scope and stores `token.json` locally. Test sending only to an email address you control. The app requires you to approve the exact **To**, **Subject**, and **Body** before sending.
+Default configuration:
 
-## Under the hood
+- `OLLAMA_MODEL=llama3.2`
+- `OLLAMA_BASE_URL=http://localhost:11434`
+
+The application uses the locally installed Llama model for email drafting.
+
+## Running the AI Agent
+
+### AI Drafting Mode
+
+Start the agent:
+
+`python main.py`
+
+The agent will:
+
+1. Ask for the recipient's email address.
+2. Ask what the email should contain.
+3. Generate a subject and email body using Llama 3.2.
+4. Display the generated email for review.
+5. Allow the user to approve, revise, change the recipient, or cancel.
+6. Complete a dry run after approval without sending a real email.
+
+### Mock Testing Mode
+
+`python main.py --mock`
+
+This mode tests the LangGraph workflow without running the language model. It uses placeholder email content and does not send real emails.
+
+### Live Email Sending
+
+`python main.py --live`
+
+This mode enables actual Gmail delivery after the user explicitly approves the email.
+
+## Gmail API Configuration
+
+To enable email sending:
+
+1. Open [Google Cloud Console](https://console.cloud.google.com/).
+2. Create or select a Google Cloud project.
+3. Enable the Gmail API.
+4. Configure the OAuth consent screen and required test users.
+5. Create OAuth credentials for a **Desktop application**.
+6. Download the credentials and save them as `credentials.json` in the project directory.
+7. Run `python main.py --live`.
+8. Complete Google authentication when prompted.
+
+The application requests Gmail sending permission and stores the authorization token locally.
+
+**Important:** Never upload `credentials.json`, `token.json`, or other sensitive authentication files to GitHub.
+
+## Agent Workflow
+
+The application follows this LangGraph workflow:
 
 ```text
-START -> COLLECT [interrupt: recipient and requirements]
-      -> DRAFT [local Llama through Ollama]
-      -> REVIEW [interrupt: display exact draft]
-         -> edit -> REVISE [local Llama] -> REVIEW
-         -> to   -> REVIEW [updated recipient]
-         -> cancel -> END
-         -> send -> SEND [approval fingerprint check]
-                    -> dry-run receipt OR Gmail OAuth and send -> END
+START
+  |
+  v
+Collect Recipient and Requirements
+  |
+  v
+Generate Email Using Llama 3.2
+  |
+  v
+Display Email for Approval
+  |
+  +---- Edit ----> Revise Using Llama
+  |                    |
+  |                    v
+  |              Review Again
+  |
+  +---- Change Recipient --> Review Again
+  |
+  +---- Cancel --> END
+  |
+  +---- Approve
+          |
+          v
+     Validate Approval
+          |
+          v
+     Gmail API (Live Mode)
+          |
+          v
+         END
 ```
 
-LangGraph checkpoints are saved in `checkpoints.sqlite`; send reservations in `send_ledger.sqlite`. Restart an unfinished paused conversation with `python main.py --resume THREAD_ID` (and `--live` only if it was a live thread). If you were interrupted during drafting rather than at a waiting prompt, that graph may not be resumable automatically. Use a new thread in that case.
+LangGraph manages workflow execution, conditional transitions, and human-in-the-loop approval.
 
-### Security notes
+## Memory and Checkpointing
 
-- The model writes **text only** and never receives Gmail sending authority.
-- Any revision or changed recipient clears approval. The send node verifies a SHA-256 fingerprint of the approved recipient, subject and body.
-- By default the program performs a **dry run**. Real Gmail transmission requires both `--live` and the `send` action.
-- SQLite send reservations guard against automatic duplicate-send retries. If transmission is uncertain, inspect Gmail Sent before retrying manually.
-- Protect OAuth credentials, token files, and checkpoint databases; these contain secrets or email text and are excluded by `.gitignore`.
+The agent uses LangGraph checkpointing to maintain workflow state.
+
+- Conversation and execution state are stored in `checkpoints.sqlite`.
+- The agent retains the recipient, email requirements, generated draft, and approval workflow state.
+- Interrupted approval workflows can be resumed using their thread ID.
+- Sending records are maintained in `send_ledger.sqlite` to help prevent duplicate sends.
+
+To resume an unfinished conversation:
+
+`python main.py --resume THREAD_ID`
+
+For a live sending conversation, include the `--live` flag.
+
+The current implementation uses thread-specific workflow memory rather than a cross-conversation long-term semantic memory system.
+
+## Security Features
+
+- Requires explicit human approval before live email sending.
+- Keeps Gmail sending operations separate from LLM text generation.
+- Verifies the approved recipient, subject, and email body.
+- Uses SHA-256 approval fingerprints to detect changes.
+- Validates email addresses.
+- Uses SQLite sending records to help prevent duplicate sending attempts.
+- Excludes local credentials, tokens, and databases through `.gitignore`.
+
+## Testing
+
+Run the included automated tests:
+
+`python -m unittest discover -s tests -v`
+
+These tests verify application functionality without sending real emails.
 
 ## Troubleshooting
 
-**`Cannot reach Ollama ...`** — Install/open Ollama and retry. Check `ollama list` and, if necessary, start `ollama serve`.
+**Ollama not running:** Open the Ollama application or start its server using `ollama serve`.
 
-**`model ... is not installed`** — Run `ollama pull llama3.2` or the model specified in `.env`.
+**Llama model not found:** Run `ollama pull llama3.2`.
 
-**`Local Llama drafting failed`** — Check `ollama run llama3.2`, available RAM, and whether Ollama is running. A 3B model can occasionally produce unsuitable drafts; request a revision or upgrade the model.
+**Email generation not working:** Verify that Ollama is running and use `python main.py` instead of mock mode.
 
-**Still copying instructions verbatim?** — Check that you ran `python main.py`, **not** `python main.py --mock`.
+**Gmail authentication error:** Verify that Gmail API is enabled and the OAuth credentials are configured correctly.
 
-**Gmail credentials missing** — Nothing sends unless you use `--live`, approve, and complete Google OAuth setup.
+**Email not sent:** Ensure the application is running in live mode and the email has been explicitly approved.
 
-## Tests
+## Future Improvements
 
-```bash
-python -m unittest discover -s tests -v
-```
+- Implement long-term memory using LangGraph Store.
+- Remember user email-writing preferences.
+- Add recipient information management.
+- Introduce document-based email generation.
+- Develop memory-write validation and security mechanisms.
+- Investigate prompt injection and memory-poisoning vulnerabilities.
 
-Tests do not send email or require an Ollama service. Full local Llama + Gmail integration should be tested on your Mac since neither Ollama nor your account credentials are present here.
+## Project Repository
 
-## Research connection
-
-This project uses *thread-scoped LangGraph checkpoints*, not long-term semantic memories. Later you can add a LangGraph Store and study how untrusted email content moves across memory write boundaries, while keeping user approval outside untrusted data.
+**GitHub:** https://github.com/moadil65/langgraph-email-agent
